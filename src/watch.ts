@@ -1,7 +1,7 @@
 import fs from 'fs'
 import path from 'path'
 import { compareWithAdapters } from './compare'
-import { printReport } from './report'
+import { renderReport } from './report'
 import { SqliteAdapter } from './adapters/sqlite'
 import { PostgresAdapter } from './adapters/postgres'
 import type { CompareConfig } from './types'
@@ -29,17 +29,19 @@ export async function watch(
 
     const sqlite = new SqliteAdapter(sqlitePath)
     try {
-      console.clear()
-      const timestamp = new Date().toLocaleTimeString()
-      console.log(`\x1b[2m[${timestamp}] Comparing...\x1b[0m\n`)
-
       const result = await compareWithAdapters(sqlite, pg, config.tables)
-      await printReport(result, { verbose: options.verbose })
+      const report = await renderReport(result, { verbose: options.verbose })
 
-      console.log(
-        `\x1b[2mWatching for changes... (interval: ${interval}ms)\x1b[0m`,
-      )
+      const timestamp = new Date().toLocaleTimeString()
+      const header = `\x1b[2m[${timestamp}] Compared ${config.tables.length} table(s)\x1b[0m\n`
+      const footer = `\x1b[2mWatching for changes... (interval: ${interval}ms)\x1b[0m`
+
+      // Single write to avoid flash
+      const output = header + report + '\n' + footer
+      console.clear()
+      process.stdout.write(output + '\n')
     } catch (err) {
+      console.clear()
       console.error('Comparison failed:', err)
     } finally {
       await sqlite.close()
