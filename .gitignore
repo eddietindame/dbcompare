@@ -2,3 +2,6 @@ node_modules
 dist
 *.db
 .env
+dbcompare.config.ts
+tables/*
+!tables/_example.ts
