@@ -1,6 +1,6 @@
-export { compare } from "./compare";
-export { printReport } from "./report";
-export * as normalizers from "./normalizers";
+export { compare } from './compare'
+export { printReport } from './report'
+export * as normalizers from './normalizers'
 export type {
   CompareConfig,
   TableConfig,
@@ -11,4 +11,4 @@ export type {
   RowDiff,
   ColumnDiff,
   DbAdapter,
-} from "./types";
+} from './types'
