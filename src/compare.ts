@@ -201,25 +201,33 @@ export async function compareTable(
   }
 }
 
+export async function compareWithAdapters(
+  sqlite: DbAdapter,
+  pg: DbAdapter,
+  tableConfigs: TableConfig[],
+): Promise<CompareResult> {
+  const tables: TableSummary[] = []
+  for (const tableConfig of tableConfigs) {
+    const summary = await compareTable(sqlite, pg, tableConfig)
+    tables.push(summary)
+  }
+
+  return {
+    tables,
+    totalDiffs: tables.reduce(
+      (sum, t) =>
+        sum + t.missingInPostgres + t.missingInSqlite + t.valueMismatches,
+      0,
+    ),
+  }
+}
+
 export async function compare(config: CompareConfig): Promise<CompareResult> {
   const sqlite = new SqliteAdapter(config.sqlite.path)
   const pg = new PostgresAdapter(config.postgres.connectionString)
 
   try {
-    const tables: TableSummary[] = []
-    for (const tableConfig of config.tables) {
-      const summary = await compareTable(sqlite, pg, tableConfig)
-      tables.push(summary)
-    }
-
-    return {
-      tables,
-      totalDiffs: tables.reduce(
-        (sum, t) =>
-          sum + t.missingInPostgres + t.missingInSqlite + t.valueMismatches,
-        0,
-      ),
-    }
+    return await compareWithAdapters(sqlite, pg, config.tables)
   } finally {
     await Promise.all([sqlite.close(), pg.close()])
   }

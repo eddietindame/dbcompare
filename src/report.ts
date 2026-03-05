@@ -22,77 +22,88 @@ function pkString(pk: Record<string, unknown>): string {
     .join(', ')
 }
 
-export async function printReport(
-  result: CompareResult,
-  options: { verbose?: boolean; json?: boolean } = {},
-): Promise<void> {
-  if (options.json) {
-    console.log(JSON.stringify(result, null, 2))
-    return
-  }
-
-  const c = await getChalk()
-
-  for (const table of result.tables) {
-    console.log('')
-    console.log(c.bold.underline(`Table: ${table.table}`))
-    console.log(
-      `  SQLite rows: ${table.sqliteRowCount}  |  Postgres rows: ${table.postgresRowCount}`,
-    )
-
-    if (table.diffs.length === 0) {
-      console.log(c.green('  All rows match.'))
-      continue
-    }
-
-    if (table.missingInPostgres > 0) {
-      console.log(c.yellow(`  Missing in Postgres: ${table.missingInPostgres}`))
-    }
-    if (table.missingInSqlite > 0) {
-      console.log(c.yellow(`  Missing in SQLite: ${table.missingInSqlite}`))
-    }
-    if (table.valueMismatches > 0) {
-      console.log(c.red(`  Value mismatches: ${table.valueMismatches}`))
-    }
-
-    if (options.verbose) {
-      printDiffs(table.diffs, c)
-    } else {
-      const shown = Math.min(table.diffs.length, 5)
-      printDiffs(table.diffs.slice(0, shown), c)
-      if (table.diffs.length > shown) {
-        console.log(c.dim(`  ... and ${table.diffs.length - shown} more diffs`))
-      }
-    }
-  }
-
-  console.log('')
-  if (result.totalDiffs === 0) {
-    console.log(c.green.bold('All tables match.'))
-  } else {
-    console.log(c.red.bold(`Total diffs: ${result.totalDiffs}`))
-  }
-  console.log('')
-}
-
-function printDiffs(diffs: RowDiff[], c: ChalkInstance) {
+function renderDiffs(diffs: RowDiff[], c: ChalkInstance): string {
+  const lines: string[] = []
   for (const diff of diffs) {
     const pk = pkString(diff.primaryKey)
     switch (diff.type) {
       case 'missing_in_postgres':
-        console.log(c.yellow(`  [${pk}] missing in Postgres`))
+        lines.push(c.yellow(`  [${pk}] missing in Postgres`))
         break
       case 'missing_in_sqlite':
-        console.log(c.yellow(`  [${pk}] missing in SQLite`))
+        lines.push(c.yellow(`  [${pk}] missing in SQLite`))
         break
       case 'value_mismatch':
-        console.log(c.red(`  [${pk}] value mismatch:`))
+        lines.push(c.red(`  [${pk}] value mismatch:`))
         for (const col of diff.columns ?? []) {
-          console.log(
+          lines.push(
             `    ${c.dim(col.column)}: SQLite=${c.cyan(truncate(col.sqliteValue))} Postgres=${c.magenta(truncate(col.postgresValue))}`,
           )
         }
         break
     }
   }
+  return lines.join('\n')
+}
+
+export async function renderReport(
+  result: CompareResult,
+  options: { verbose?: boolean; json?: boolean } = {},
+): Promise<string> {
+  if (options.json) {
+    return JSON.stringify(result, null, 2)
+  }
+
+  const c = await getChalk()
+  const lines: string[] = []
+
+  for (const table of result.tables) {
+    lines.push('')
+    lines.push(c.bold.underline(`Table: ${table.table}`))
+    lines.push(
+      `  SQLite rows: ${table.sqliteRowCount}  |  Postgres rows: ${table.postgresRowCount}`,
+    )
+
+    if (table.diffs.length === 0) {
+      lines.push(c.green('  All rows match.'))
+      continue
+    }
+
+    if (table.missingInPostgres > 0) {
+      lines.push(c.yellow(`  Missing in Postgres: ${table.missingInPostgres}`))
+    }
+    if (table.missingInSqlite > 0) {
+      lines.push(c.yellow(`  Missing in SQLite: ${table.missingInSqlite}`))
+    }
+    if (table.valueMismatches > 0) {
+      lines.push(c.red(`  Value mismatches: ${table.valueMismatches}`))
+    }
+
+    if (options.verbose) {
+      lines.push(renderDiffs(table.diffs, c))
+    } else {
+      const shown = Math.min(table.diffs.length, 5)
+      lines.push(renderDiffs(table.diffs.slice(0, shown), c))
+      if (table.diffs.length > shown) {
+        lines.push(c.dim(`  ... and ${table.diffs.length - shown} more diffs`))
+      }
+    }
+  }
+
+  lines.push('')
+  if (result.totalDiffs === 0) {
+    lines.push(c.green.bold('All tables match.'))
+  } else {
+    lines.push(c.red.bold(`Total diffs: ${result.totalDiffs}`))
+  }
+  lines.push('')
+
+  return lines.join('\n')
+}
+
+export async function printReport(
+  result: CompareResult,
+  options: { verbose?: boolean; json?: boolean } = {},
+): Promise<void> {
+  console.log(await renderReport(result, options))
 }

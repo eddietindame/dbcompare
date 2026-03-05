@@ -2,6 +2,7 @@ import { Command } from 'commander'
 import path from 'path'
 import { compare } from './compare'
 import { printReport } from './report'
+import { watch } from './watch'
 import type { CompareConfig } from './types'
 
 const program = new Command()
@@ -16,6 +17,8 @@ program
   )
   .option('-v, --verbose', 'Show all diffs (not just first 5 per table)')
   .option('--json', 'Output as JSON')
+  .option('-w, --watch', 'Watch for changes and re-run comparison')
+  .option('--interval <ms>', 'Polling interval for watch mode in ms', '3000')
   .action(async opts => {
     const configPath = path.resolve(opts.config)
 
@@ -28,6 +31,14 @@ program
       console.error(`Failed to load config from ${configPath}:`)
       console.error(err)
       process.exit(1)
+    }
+
+    if (opts.watch) {
+      await watch(config, {
+        verbose: opts.verbose,
+        interval: parseInt(opts.interval, 10),
+      })
+      return
     }
 
     try {
