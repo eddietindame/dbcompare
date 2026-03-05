@@ -34,7 +34,10 @@ export async function watch(
 
       const timestamp = new Date().toLocaleTimeString()
       const header = `\x1b[2m[${timestamp}] Compared ${config.tables.length} table(s)\x1b[0m\n`
-      const footer = `\x1b[2mWatching for changes... (interval: ${interval}ms)\x1b[0m`
+      const footer =
+        `\x1b[2mWatching for changes... (interval: ${interval}ms)\n` +
+        `\n` +
+        `q quit  r refresh  Ctrl+C exit\x1b[0m`
 
       // Single write to avoid flash
       const output = header + report + '\n' + footer
@@ -85,6 +88,21 @@ export async function watch(
     if (debounceTimer) clearTimeout(debounceTimer)
     await pg.close()
     process.exit(0)
+  }
+
+  // Keyboard input
+  if (process.stdin.isTTY) {
+    process.stdin.setRawMode(true)
+    process.stdin.resume()
+    process.stdin.on('data', (key: Buffer) => {
+      const ch = key.toString()
+      if (ch === 'q' || ch === '\x03') {
+        // q or Ctrl+C
+        cleanup()
+      } else if (ch === 'r') {
+        run()
+      }
+    })
   }
 
   process.on('SIGINT', cleanup)
