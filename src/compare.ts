@@ -66,7 +66,7 @@ function comparePkValues(
   return 0
 }
 
-async function compareTable(
+export async function compareTable(
   sqlite: DbAdapter,
   pg: DbAdapter,
   config: TableConfig,

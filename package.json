@@ -15,6 +15,8 @@
     "format": "prettier --write \"src/**/*.ts\" \"*.ts\" \"*.json\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"*.ts\" \"*.json\"",
     "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "prepare": "husky"
   },
   "keywords": [],
@@ -40,7 +42,8 @@
     "husky": "^9.1.7",
     "lint-staged": "^16.3.2",
     "prettier": "^3.8.1",
-    "typescript-eslint": "^8.56.1"
+    "typescript-eslint": "^8.56.1",
+    "vitest": "^4.0.18"
   },
   "lint-staged": {
     "*.ts": [
