@@ -9,9 +9,10 @@ const program = new Command()
 program
   .name('dbcompare')
   .description('Compare data between SQLite and PostgreSQL databases')
-  .requiredOption(
+  .option(
     '-c, --config <path>',
     'Path to config file (JS/TS module exporting CompareConfig)',
+    'dbcompare.config.ts',
   )
   .option('-v, --verbose', 'Show all diffs (not just first 5 per table)')
   .option('--json', 'Output as JSON')
