@@ -1,9 +1,10 @@
+import "dotenv/config";
 import type { CompareConfig } from "./src/types";
 import { numeric, boolean, timestamp, json } from "./src/normalizers";
 
 const config: CompareConfig = {
-  sqlite: { path: "./local.db" },
-  postgres: { connectionString: "postgres://user:pass@localhost:5432/myapp" },
+  sqlite: { path: process.env.SQLITE_PATH! },
+  postgres: { connectionString: process.env.POSTGRES_URL! },
   tables: [
     {
       name: "invoices",
