@@ -80,10 +80,21 @@ export async function compareTable(
     pg.getTableColumns(config.name),
   ])
 
+  // Auto-ignore the soft delete column from comparisons
+  const effectiveConfig = config.softDeleteColumn
+    ? {
+        ...config,
+        ignoreColumns: [
+          ...(config.ignoreColumns ?? []),
+          config.softDeleteColumn,
+        ],
+      }
+    : config
+
   const { compareColumns, sqliteToPg } = resolveColumns(
     sqliteCols,
     pgCols,
-    config,
+    effectiveConfig,
   )
 
   // Build the list of columns to fetch from each side
@@ -96,10 +107,17 @@ export async function compareTable(
     ]),
   ]
 
-  // Fetch rows sorted by PK
+  // Fetch rows sorted by PK, filtering out soft-deleted rows in Postgres
+  // (only if the column actually exists in this table)
+  const pgColLowerSet = new Set(pgCols.map(c => c.toLowerCase()))
+  const pgWhereNull =
+    config.softDeleteColumn &&
+    pgColLowerSet.has(config.softDeleteColumn.toLowerCase())
+      ? [config.softDeleteColumn]
+      : undefined
   const [sqliteRows, pgRows] = await Promise.all([
     sqlite.getRows(config.name, sqliteFetchCols, pkCols),
-    pg.getRows(config.name, pgFetchCols, pgPkCols),
+    pg.getRows(config.name, pgFetchCols, pgPkCols, pgWhereNull),
   ])
 
   const diffs: RowDiff[] = []
@@ -201,6 +219,15 @@ export async function compareTable(
   }
 }
 
+export function resolveTableConfigs(config: CompareConfig): TableConfig[] {
+  const defaults = config.defaults
+  if (!defaults) return config.tables
+  return config.tables.map(table => ({
+    ...table,
+    softDeleteColumn: table.softDeleteColumn ?? defaults.softDeleteColumn,
+  }))
+}
+
 export async function compareWithAdapters(
   sqlite: DbAdapter,
   pg: DbAdapter,
@@ -227,7 +254,7 @@ export async function compare(config: CompareConfig): Promise<CompareResult> {
   const pg = new PostgresAdapter(config.postgres.connectionString)
 
   try {
-    return await compareWithAdapters(sqlite, pg, config.tables)
+    return await compareWithAdapters(sqlite, pg, resolveTableConfigs(config))
   } finally {
     await Promise.all([sqlite.close(), pg.close()])
   }

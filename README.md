@@ -6,7 +6,8 @@ Built for offline-first apps that sync data to a backend. When your client write
 
 It compares tables and rows with the same names and IDs across both databases, handling the common differences between SQLite and Postgres:
 
-- **Extra columns** — the backend might have columns the client doesn't (e.g. `deleted_at`, `synced_at`). These are automatically excluded from comparison, or can be explicitly ignored.
+- **Soft deletes** — rows marked as deleted in Postgres (e.g. `deleted_at IS NOT NULL`) are automatically excluded from comparison via a single config option.
+- **Extra columns** — the backend might have columns the client doesn't (e.g. `synced_at`). These are automatically excluded from comparison, or can be explicitly ignored.
 - **Type/format mismatches** — SQLite numbers vs Postgres `numeric(6)`, SQLite ISO strings vs Postgres `timestamptz`, SQLite `0`/`1` vs Postgres `boolean`, etc. These are resolved with configurable normalizers.
 - **Column renaming** — when a column has a different name in each database.
 - **Watch mode** — continuously monitors both databases for changes and re-runs the comparison.
@@ -37,7 +38,7 @@ import type { TableConfig } from '../src/types'
 export const invoices: TableConfig = {
   name: 'invoices',
   primaryKey: 'id',
-  ignoreColumns: ['deleted_at', 'synced_at'],
+  ignoreColumns: ['synced_at'],
   columnMappings: {
     amount: money,
     due_date: ts,
@@ -65,6 +66,9 @@ import { tables } from './tables'
 const config: CompareConfig = {
   sqlite: { path: process.env.SQLITE_PATH! },
   postgres: { connectionString: process.env.POSTGRES_URL! },
+  defaults: {
+    softDeleteColumn: 'deleted_at',
+  },
   tables,
 }
 
@@ -72,6 +76,26 @@ export default config
 ```
 
 Adding a new table is just: define it, add it to the array in `tables/index.ts`.
+
+### Soft deletes
+
+If your Postgres tables use a column like `deleted_at` to mark rows as soft-deleted, set `softDeleteColumn` in `defaults` to apply it to all tables:
+
+```ts
+defaults: {
+  softDeleteColumn: 'deleted_at',
+}
+```
+
+Rows where that column is not null are excluded from comparison, and the column itself is automatically ignored from value comparisons. You can override per table:
+
+```ts
+{
+  name: 'audit_logs',
+  primaryKey: 'id',
+  softDeleteColumn: undefined, // opt out for this table
+}
+```
 
 ## Usage
 

@@ -7,6 +7,9 @@ import { invoices, lineItems } from './tables/_example'
 const config: CompareConfig = {
   sqlite: { path: process.env.SQLITE_PATH! },
   postgres: { connectionString: process.env.POSTGRES_URL! },
+  defaults: {
+    softDeleteColumn: 'deleted_at',
+  },
   tables: [invoices, lineItems],
 }
 

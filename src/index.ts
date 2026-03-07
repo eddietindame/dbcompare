@@ -1,4 +1,4 @@
-export { compare, compareWithAdapters } from './compare'
+export { compare, compareWithAdapters, resolveTableConfigs } from './compare'
 export { watch } from './watch'
 export { printReport, renderReport } from './report'
 export * as normalizers from './normalizers'
@@ -12,4 +12,5 @@ export type {
   RowDiff,
   ColumnDiff,
   DbAdapter,
+  GlobalTableConfig,
 } from './types'

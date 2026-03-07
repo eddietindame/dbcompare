@@ -20,11 +20,15 @@ export class PostgresAdapter implements DbAdapter {
     table: string,
     columns: string[],
     orderBy: string[],
+    whereNull?: string[],
   ): Promise<Record<string, unknown>[]> {
     await this.ensureConnected()
     const cols = columns.map(c => `"${c}"`).join(', ')
     const order = orderBy.map(c => `"${c}"`).join(', ')
-    const sql = `SELECT ${cols} FROM "${table}" ORDER BY ${order}`
+    const whereClauses = (whereNull ?? []).map(c => `"${c}" IS NULL`)
+    const where =
+      whereClauses.length > 0 ? ` WHERE ${whereClauses.join(' AND ')}` : ''
+    const sql = `SELECT ${cols} FROM "${table}"${where} ORDER BY ${order}`
     const result = await this.client.query(sql)
     return result.rows
   }

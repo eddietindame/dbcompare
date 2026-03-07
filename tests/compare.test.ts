@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { compareTable } from '../src/compare'
+import { compareTable, resolveTableConfigs } from '../src/compare'
 import { MockAdapter } from './mock-adapter'
 import { numeric, timestamp, boolean } from '../src/normalizers'
 
@@ -526,6 +526,154 @@ describe('compareTable', () => {
       expect(result.postgresRowCount).toBe(2)
       expect(result.missingInPostgres).toBe(2) // id=2, id=3
       expect(result.missingInSqlite).toBe(1) // id=4
+    })
+  })
+
+  describe('softDeleteColumn', () => {
+    it('excludes soft-deleted rows from postgres', async () => {
+      const { sqlite, pg } = makePair()
+
+      sqlite.addTable(
+        'users',
+        ['id', 'name'],
+        [
+          { id: '1', name: 'Alice' },
+          { id: '2', name: 'Bob' },
+        ],
+      )
+      pg.addTable(
+        'users',
+        ['id', 'name', 'deleted_at'],
+        [
+          { id: '1', name: 'Alice', deleted_at: null },
+          { id: '2', name: 'Bob', deleted_at: '2026-01-01' },
+        ],
+      )
+
+      const result = await compareTable(sqlite, pg, {
+        name: 'users',
+        primaryKey: 'id',
+        softDeleteColumn: 'deleted_at',
+      })
+
+      // id=2 is soft-deleted in pg, so it appears as missing_in_postgres
+      expect(result.postgresRowCount).toBe(1)
+      expect(result.missingInPostgres).toBe(1)
+      expect(result.diffs[0]).toMatchObject({
+        type: 'missing_in_postgres',
+        primaryKey: { id: '2' },
+      })
+    })
+
+    it('auto-ignores the soft delete column from value comparisons', async () => {
+      const { sqlite, pg } = makePair()
+
+      sqlite.addTable('users', ['id', 'name'], [{ id: '1', name: 'Alice' }])
+      pg.addTable(
+        'users',
+        ['id', 'name', 'deleted_at'],
+        [{ id: '1', name: 'Alice', deleted_at: null }],
+      )
+
+      const result = await compareTable(sqlite, pg, {
+        name: 'users',
+        primaryKey: 'id',
+        softDeleteColumn: 'deleted_at',
+      })
+
+      expect(result.diffs).toEqual([])
+    })
+
+    it('skips filtering when the column does not exist on the table', async () => {
+      const { sqlite, pg } = makePair()
+
+      sqlite.addTable(
+        'logs',
+        ['id', 'message'],
+        [{ id: '1', message: 'hello' }],
+      )
+      pg.addTable('logs', ['id', 'message'], [{ id: '1', message: 'hello' }])
+
+      const result = await compareTable(sqlite, pg, {
+        name: 'logs',
+        primaryKey: 'id',
+        softDeleteColumn: 'deleted_at',
+      })
+
+      expect(result.diffs).toEqual([])
+      expect(result.postgresRowCount).toBe(1)
+    })
+
+    it('no diffs when all data matches and non-deleted', async () => {
+      const { sqlite, pg } = makePair()
+
+      sqlite.addTable(
+        'users',
+        ['id', 'name'],
+        [
+          { id: '1', name: 'Alice' },
+          { id: '2', name: 'Bob' },
+        ],
+      )
+      pg.addTable(
+        'users',
+        ['id', 'name', 'deleted_at'],
+        [
+          { id: '1', name: 'Alice', deleted_at: null },
+          { id: '2', name: 'Bob', deleted_at: null },
+        ],
+      )
+
+      const result = await compareTable(sqlite, pg, {
+        name: 'users',
+        primaryKey: 'id',
+        softDeleteColumn: 'deleted_at',
+      })
+
+      expect(result.diffs).toEqual([])
+    })
+  })
+
+  describe('resolveTableConfigs', () => {
+    it('applies defaults.softDeleteColumn to all tables', () => {
+      const resolved = resolveTableConfigs({
+        sqlite: { path: '' },
+        postgres: { connectionString: '' },
+        defaults: { softDeleteColumn: 'deleted_at' },
+        tables: [
+          { name: 'users', primaryKey: 'id' },
+          { name: 'orders', primaryKey: 'id' },
+        ],
+      })
+
+      expect(resolved[0].softDeleteColumn).toBe('deleted_at')
+      expect(resolved[1].softDeleteColumn).toBe('deleted_at')
+    })
+
+    it('allows per-table override of defaults', () => {
+      const resolved = resolveTableConfigs({
+        sqlite: { path: '' },
+        postgres: { connectionString: '' },
+        defaults: { softDeleteColumn: 'deleted_at' },
+        tables: [
+          { name: 'users', primaryKey: 'id' },
+          { name: 'logs', primaryKey: 'id', softDeleteColumn: 'removed_at' },
+        ],
+      })
+
+      expect(resolved[0].softDeleteColumn).toBe('deleted_at')
+      expect(resolved[1].softDeleteColumn).toBe('removed_at')
+    })
+
+    it('returns tables unchanged when no defaults', () => {
+      const tables = [{ name: 'users', primaryKey: 'id' as const }]
+      const resolved = resolveTableConfigs({
+        sqlite: { path: '' },
+        postgres: { connectionString: '' },
+        tables,
+      })
+
+      expect(resolved).toBe(tables)
     })
   })
 

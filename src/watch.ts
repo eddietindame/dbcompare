@@ -1,6 +1,6 @@
 import fs from 'fs'
 import path from 'path'
-import { compareWithAdapters } from './compare'
+import { compareWithAdapters, resolveTableConfigs } from './compare'
 import { renderReport } from './report'
 import { SqliteAdapter } from './adapters/sqlite'
 import { PostgresAdapter } from './adapters/postgres'
@@ -16,6 +16,7 @@ export async function watch(
   const interval = options.interval ?? 3000
   const sqlitePath = path.resolve(config.sqlite.path)
   const pg = new PostgresAdapter(config.postgres.connectionString)
+  const tableConfigs = resolveTableConfigs(config)
 
   let running = false
   let pending = false
@@ -29,7 +30,7 @@ export async function watch(
 
     const sqlite = new SqliteAdapter(sqlitePath)
     try {
-      const result = await compareWithAdapters(sqlite, pg, config.tables)
+      const result = await compareWithAdapters(sqlite, pg, tableConfigs)
       const report = await renderReport(result, { verbose: options.verbose })
 
       const timestamp = new Date().toLocaleTimeString()

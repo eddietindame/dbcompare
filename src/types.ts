@@ -18,12 +18,26 @@ export type TableConfig = {
   ignoreColumns?: string[]
   /** Per-column mappings and normalizers */
   columnMappings?: Record<string, ColumnMapping>
+  /** Column that marks a row as soft-deleted (e.g. "deleted_at").
+   *  Rows where this column is NOT NULL are excluded from comparison.
+   *  The column is also automatically excluded from value comparisons. */
+  softDeleteColumn?: string
+}
+
+export type GlobalTableConfig = {
+  /** Column that marks a row as soft-deleted (e.g. "deleted_at").
+   *  Rows where this column is NOT NULL are excluded from comparison.
+   *  The column is also automatically excluded from value comparisons.
+   *  Can be overridden per table. */
+  softDeleteColumn?: string
 }
 
 export type CompareConfig = {
   sqlite: { path: string }
   postgres: { connectionString: string }
   tables: TableConfig[]
+  /** Default settings applied to all tables (can be overridden per table) */
+  defaults?: GlobalTableConfig
 }
 
 export type ColumnDiff = {
@@ -59,6 +73,7 @@ export interface DbAdapter {
     table: string,
     columns: string[],
     orderBy: string[],
+    whereNull?: string[],
   ): Promise<Record<string, unknown>[]>
   getTableColumns(table: string): Promise<string[]>
   close(): Promise<void>
