@@ -165,6 +165,11 @@ export async function compareTable(
         if (sNull && pNull) continue
 
         if (sNull !== pNull || String(sVal) !== String(pVal)) {
+          if (process.env.DBCOMPARE_DEBUG) {
+            console.error(
+              `[DEBUG] ${config.name}.${col}: hasNormalizer=${!!mapping?.normalize} raw=[${sRow[col]}, ${pRow[pgCol]}] normalized=[${sVal}, ${pVal}]`,
+            )
+          }
           colDiffs.push({
             column: col,
             sqliteValue: sRow[col],

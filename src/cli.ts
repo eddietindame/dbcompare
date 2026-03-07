@@ -19,6 +19,7 @@ program
   .option('--json', 'Output as JSON')
   .option('-w, --watch', 'Watch for changes and re-run comparison')
   .option('--interval <ms>', 'Polling interval for watch mode in ms', '3000')
+  .option('--debug', 'Log normalizer details for mismatched values')
   .action(async opts => {
     const configPath = path.resolve(opts.config)
 
@@ -31,6 +32,10 @@ program
       console.error(`Failed to load config from ${configPath}:`)
       console.error(err)
       process.exit(1)
+    }
+
+    if (opts.debug) {
+      process.env.DBCOMPARE_DEBUG = '1'
     }
 
     if (opts.watch) {
