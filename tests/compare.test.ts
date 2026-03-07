@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect } from 'bun:test'
 import { compareTable, resolveTableConfigs } from '../src/compare'
 import { MockAdapter } from './mock-adapter'
 import { numeric, timestamp, boolean } from '../src/normalizers'

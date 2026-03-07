@@ -7,45 +7,41 @@
     "dbcompare": "./bin/dbcompare.js"
   },
   "scripts": {
-    "start": "tsx src/cli.ts",
-    "build": "tsc",
-    "compare": "tsx src/cli.ts",
+    "start": "bun run src/cli.ts",
+    "build": "bun build src/cli.ts --outdir dist --target node",
+    "compare": "bun run src/cli.ts",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "format": "prettier --write \"src/**/*.ts\" \"*.ts\" \"*.json\"",
     "format:check": "prettier --check \"src/**/*.ts\" \"*.ts\" \"*.json\"",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run",
-    "test:watch": "vitest",
+    "test": "bun test",
+    "test:watch": "bun test --watch",
     "prepare": "husky"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
-    "@types/node": "^25.3.3",
     "@types/pg": "^8.18.0",
     "chalk": "^5.6.2",
     "commander": "^14.0.3",
     "dotenv": "^17.3.1",
     "node-notifier": "^10.0.1",
-    "pg": "^8.20.0",
-    "sql.js": "^1.14.1",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "pg": "^8.20.0"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/bun": "latest",
     "@types/node-notifier": "^8.0.5",
-    "@types/sql.js": "^1.4.9",
     "eslint": "^10.0.2",
     "eslint-config-prettier": "^10.1.8",
     "husky": "^9.1.7",
     "lint-staged": "^16.3.2",
     "prettier": "^3.8.1",
-    "typescript-eslint": "^8.56.1",
-    "vitest": "^4.0.18"
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.56.1"
   },
   "lint-staged": {
     "*.ts": [

@@ -25,8 +25,7 @@ program
 
     let config: CompareConfig
     try {
-      // eslint-disable-next-line @typescript-eslint/no-require-imports
-      const mod = require(configPath)
+      const mod = await import(configPath)
       config = mod.default ?? mod
     } catch (err) {
       console.error(`Failed to load config from ${configPath}:`)

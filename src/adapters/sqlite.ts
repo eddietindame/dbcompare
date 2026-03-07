@@ -1,23 +1,11 @@
-import initSqlJs, { type Database } from 'sql.js'
-import fs from 'fs'
+import { Database } from 'bun:sqlite'
 import type { DbAdapter } from '../types'
 
 export class SqliteAdapter implements DbAdapter {
-  private db: Database | null = null
-  private initPromise: Promise<Database>
+  private db: Database
 
   constructor(dbPath: string) {
-    this.initPromise = (async () => {
-      const SQL = await initSqlJs()
-      const buffer = fs.readFileSync(dbPath)
-      this.db = new SQL.Database(buffer)
-      return this.db
-    })()
-  }
-
-  private async getDb(): Promise<Database> {
-    if (this.db) return this.db
-    return this.initPromise
+    this.db = new Database(dbPath, { readonly: true })
   }
 
   async getRows(
@@ -25,35 +13,20 @@ export class SqliteAdapter implements DbAdapter {
     columns: string[],
     orderBy: string[],
   ): Promise<Record<string, unknown>[]> {
-    const db = await this.getDb()
     const cols = columns.map(c => `"${c}"`).join(', ')
     const order = orderBy.map(c => `"${c}"`).join(', ')
     const sql = `SELECT ${cols} FROM "${table}" ORDER BY ${order}`
-    const stmt = db.prepare(sql)
-    const rows: Record<string, unknown>[] = []
-    while (stmt.step()) {
-      const row = stmt.getAsObject()
-      rows.push(row as Record<string, unknown>)
-    }
-    stmt.free()
-    return rows
+    return this.db.query(sql).all() as Record<string, unknown>[]
   }
 
   async getTableColumns(table: string): Promise<string[]> {
-    const db = await this.getDb()
-    const stmt = db.prepare(`PRAGMA table_info("${table}")`)
-    const columns: string[] = []
-    while (stmt.step()) {
-      const row = stmt.getAsObject() as { name: string }
-      columns.push(row.name)
-    }
-    stmt.free()
-    return columns
+    const rows = this.db.query(`PRAGMA table_info("${table}")`).all() as {
+      name: string
+    }[]
+    return rows.map(r => r.name)
   }
 
   async close(): Promise<void> {
-    const db = await this.getDb()
-    db.close()
-    this.db = null
+    this.db.close()
   }
 }

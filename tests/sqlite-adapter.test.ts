@@ -1,6 +1,6 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, beforeEach, afterEach } from 'bun:test'
+import { Database } from 'bun:sqlite'
 import { SqliteAdapter } from '../src/adapters/sqlite'
-import initSqlJs from 'sql.js'
 import fs from 'fs'
 import os from 'os'
 import path from 'path'
@@ -8,9 +8,11 @@ import path from 'path'
 let tmpFile: string
 let adapter: SqliteAdapter
 
-async function createTestDb(): Promise<string> {
-  const SQL = await initSqlJs()
-  const db = new SQL.Database()
+function createTestDb(): string {
+  const tmpDir = os.tmpdir()
+  const filePath = path.join(tmpDir, `dbcompare-test-${Date.now()}.db`)
+
+  const db = new Database(filePath)
 
   db.run(`
     CREATE TABLE users (
@@ -30,18 +32,14 @@ async function createTestDb(): Promise<string> {
       ('3', 'Charlie', NULL, 0, 1, '2026-01-03T00:00:00Z')
   `)
 
-  const tmpDir = os.tmpdir()
-  const filePath = path.join(tmpDir, `dbcompare-test-${Date.now()}.db`)
-  const data = db.export()
-  fs.writeFileSync(filePath, Buffer.from(data))
   db.close()
 
   return filePath
 }
 
 describe('SqliteAdapter', () => {
-  beforeEach(async () => {
-    tmpFile = await createTestDb()
+  beforeEach(() => {
+    tmpFile = createTestDb()
     adapter = new SqliteAdapter(tmpFile)
   })
 
