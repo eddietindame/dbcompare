@@ -1,10 +1,11 @@
 import fs from 'fs'
 import path from 'path'
+import notifier from 'node-notifier'
 import { compareWithAdapters, resolveTableConfigs } from './compare'
 import { renderReport } from './report'
 import { SqliteAdapter } from './adapters/sqlite'
 import { PostgresAdapter } from './adapters/postgres'
-import type { CompareConfig } from './types'
+import type { CompareConfig, CompareResult } from './types'
 
 export async function watch(
   config: CompareConfig,
@@ -20,6 +21,7 @@ export async function watch(
 
   let running = false
   let pending = false
+  let lastDiffCount = -1
 
   async function run() {
     if (running) {
@@ -44,6 +46,12 @@ export async function watch(
       const output = header + report + '\n' + footer
       console.clear()
       process.stdout.write(output + '\n')
+
+      // Notify on new diffs
+      if (shouldNotify(result.totalDiffs, lastDiffCount)) {
+        notify(result)
+      }
+      lastDiffCount = result.totalDiffs
     } catch (err) {
       console.clear()
       console.error('Comparison failed:', err)
@@ -108,4 +116,24 @@ export async function watch(
 
   process.on('SIGINT', cleanup)
   process.on('SIGTERM', cleanup)
+}
+
+export function shouldNotify(
+  currentDiffs: number,
+  lastDiffCount: number,
+): boolean {
+  return currentDiffs > 0 && currentDiffs !== lastDiffCount
+}
+
+function notify(result: CompareResult) {
+  const tables = result.tables.filter(
+    t =>
+      t.missingInPostgres > 0 || t.missingInSqlite > 0 || t.valueMismatches > 0,
+  )
+  const tableNames = tables.map(t => t.table).join(', ')
+
+  notifier.notify({
+    title: `dbcompare: ${result.totalDiffs} diff(s) found`,
+    message: `Tables: ${tableNames}`,
+  })
 }
