@@ -15,7 +15,7 @@ It compares tables and rows with the same names and IDs across both databases, h
 ## Setup
 
 ```bash
-npm install
+bun install
 cp .env.example .env
 cp dbcompare.config.example.ts dbcompare.config.ts
 ```
@@ -101,16 +101,16 @@ Rows where that column is not null are excluded from comparison, and the column 
 
 ```bash
 # Summary (first 5 diffs per table)
-npm run compare
+bun run compare
 
 # All diffs
-npm run compare -- -v
+bun run compare -- -v
 
 # JSON output (for piping into other tools)
-npm run compare -- --json
+bun run compare -- --json
 
 # Use a different config file
-npm run compare -- -c other.config.ts
+bun run compare -- -c other.config.ts
 ```
 
 The process exits with code `1` if any diffs are found, `0` if all tables match.
@@ -121,13 +121,13 @@ Continuously monitors both databases and re-runs the comparison on changes:
 
 ```bash
 # Watch with default 3s polling interval
-npm run compare -- --watch
+bun run compare -- --watch
 
 # Custom poll interval
-npm run compare -- --watch --interval 5000
+bun run compare -- --watch --interval 5000
 
 # Verbose watch
-npm run compare -- -w -v
+bun run compare -- -w -v
 ```
 
 SQLite changes are detected via filesystem watching (near-instant). Postgres is polled on the configured interval. Press `Ctrl+C` to stop.
@@ -195,10 +195,10 @@ for (const table of result.tables) {
 ## Development
 
 ```bash
-npm test            # run tests
-npm run lint        # eslint
-npm run format      # prettier
-npm run typecheck   # tsc --noEmit
+bun test            # run tests
+bun run lint        # eslint
+bun run format      # prettier
+bun run typecheck   # tsc --noEmit
 ```
 
 Pre-commit hooks run typecheck, eslint, and prettier via husky + lint-staged.
