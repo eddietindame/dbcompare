@@ -22,6 +22,28 @@ export async function watch(
   let running = false
   let pending = false
   let lastDiffCount = -1
+  let sqliteDisconnected = false
+
+  function isSqliteUnavailable(): boolean {
+    return !fs.existsSync(sqlitePath)
+  }
+
+  function showDisconnected() {
+    const timestamp = new Date().toLocaleTimeString()
+    const header = `\x1b[2m[${timestamp}]\x1b[0m\n`
+    const message =
+      `\x1b[33m⚠  SQLite database not available\x1b[0m\n` +
+      `\x1b[2m   ${sqlitePath}\x1b[0m\n` +
+      `\n` +
+      `\x1b[2m   Polling for reconnection every ${interval}ms...\x1b[0m\n`
+    const footer =
+      `\x1b[2mWatching for changes... (interval: ${interval}ms)\n` +
+      `\n` +
+      `q quit  r refresh  Ctrl+C exit\x1b[0m`
+
+    console.clear()
+    process.stdout.write(header + '\n' + message + '\n' + footer + '\n')
+  }
 
   async function run() {
     if (running) {
@@ -30,10 +52,30 @@ export async function watch(
     }
     running = true
 
-    const sqlite = new SqliteAdapter(sqlitePath)
+    if (isSqliteUnavailable()) {
+      if (!sqliteDisconnected) {
+        sqliteDisconnected = true
+        lastDiffCount = -1
+      }
+      showDisconnected()
+      running = false
+      if (pending) {
+        pending = false
+        await run()
+      }
+      return
+    }
+
+    let sqlite: SqliteAdapter | null = null
     try {
+      sqlite = new SqliteAdapter(sqlitePath)
       const result = await compareWithAdapters(sqlite, pg, tableConfigs)
       const report = await renderReport(result, { verbose: options.verbose })
+
+      if (sqliteDisconnected) {
+        sqliteDisconnected = false
+        setupSqliteWatcher()
+      }
 
       const timestamp = new Date().toLocaleTimeString()
       const header = `\x1b[2m[${timestamp}] Compared ${config.tables.length} table(s)\x1b[0m\n`
@@ -52,11 +94,14 @@ export async function watch(
         notify(result)
       }
       lastDiffCount = result.totalDiffs
-    } catch (err) {
-      console.clear()
-      console.error('Comparison failed:', err)
+    } catch {
+      if (!sqliteDisconnected) {
+        sqliteDisconnected = true
+        lastDiffCount = -1
+      }
+      showDisconnected()
     } finally {
-      await sqlite.close()
+      if (sqlite) await sqlite.close()
       running = false
     }
 
@@ -71,27 +116,55 @@ export async function watch(
 
   // Watch SQLite file for changes (debounced)
   let debounceTimer: ReturnType<typeof setTimeout> | null = null
-  const watcher = fs.watch(sqlitePath, () => {
-    if (debounceTimer) clearTimeout(debounceTimer)
-    debounceTimer = setTimeout(run, 300)
-  })
-
-  // Also watch WAL file if it exists
-  const walPath = sqlitePath + '-wal'
+  let watcher: fs.FSWatcher | null = null
   let walWatcher: fs.FSWatcher | null = null
-  if (fs.existsSync(walPath)) {
-    walWatcher = fs.watch(walPath, () => {
-      if (debounceTimer) clearTimeout(debounceTimer)
-      debounceTimer = setTimeout(run, 300)
-    })
+
+  function setupSqliteWatcher() {
+    // Clean up existing watchers
+    watcher?.close()
+    walWatcher?.close()
+
+    try {
+      watcher = fs.watch(sqlitePath, () => {
+        if (debounceTimer) clearTimeout(debounceTimer)
+        debounceTimer = setTimeout(run, 300)
+      })
+      watcher.on('error', () => {
+        // File was likely deleted; polling will handle reconnection
+        watcher?.close()
+        watcher = null
+      })
+    } catch {
+      // File doesn't exist yet; polling will handle reconnection
+      watcher = null
+    }
+
+    // Also watch WAL file if it exists
+    const walPath = sqlitePath + '-wal'
+    try {
+      if (fs.existsSync(walPath)) {
+        walWatcher = fs.watch(walPath, () => {
+          if (debounceTimer) clearTimeout(debounceTimer)
+          debounceTimer = setTimeout(run, 300)
+        })
+        walWatcher.on('error', () => {
+          walWatcher?.close()
+          walWatcher = null
+        })
+      }
+    } catch {
+      walWatcher = null
+    }
   }
+
+  setupSqliteWatcher()
 
   // Poll Postgres on interval
   const pollTimer = setInterval(run, interval)
 
   // Cleanup on exit
   const cleanup = async () => {
-    watcher.close()
+    watcher?.close()
     walWatcher?.close()
     clearInterval(pollTimer)
     if (debounceTimer) clearTimeout(debounceTimer)
