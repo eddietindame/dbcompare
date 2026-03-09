@@ -1,6 +1,6 @@
 {
   "name": "dbcompare",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "Compare data between SQLite and PostgreSQL databases",
   "main": "src/index.ts",
   "bin": {
