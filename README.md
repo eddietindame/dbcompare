@@ -1,5 +1,7 @@
 # dbcompare
 
+![dbcompare](./dbc-screenshot.png)
+
 A TypeScript CLI tool for comparing data between a local SQLite database and a local/remote PostgreSQL database.
 
 Built for offline-first apps that sync data to a backend. When your client writes to SQLite and syncs to Postgres (and other clients sync back down), you need a way to verify the data matches. Manually checking is repetitive and error-prone — this tool automates it.
@@ -136,17 +138,17 @@ SQLite changes are detected via filesystem watching (near-instant). Postgres is 
 
 Built-in normalizers handle common type mismatches between SQLite and Postgres:
 
-| Normalizer | Use case |
-|---|---|
-| `numeric(dp)` | SQLite integer/float vs Postgres `numeric` with fixed decimal places |
-| `timestamp` | SQLite ISO string vs Postgres `timestamptz` (compares as ms) |
-| `timestampSeconds` | Same as above but ignores sub-second precision |
-| `boolean` | SQLite `0`/`1` vs Postgres `boolean` |
-| `textBoolean` | SQLite `"true"`/`"false"` vs Postgres `boolean` |
-| `json` | SQLite JSON text vs Postgres `jsonb` |
-| `caseInsensitive` | Case-insensitive string comparison |
-| `nullish` | Treats `null` and `undefined` as equivalent |
-| `round(dp)` | Rounds both sides to `dp` decimal places |
+| Normalizer         | Use case                                                             |
+| ------------------ | -------------------------------------------------------------------- |
+| `numeric(dp)`      | SQLite integer/float vs Postgres `numeric` with fixed decimal places |
+| `timestamp`        | SQLite ISO string vs Postgres `timestamptz` (compares as ms)         |
+| `timestampSeconds` | Same as above but ignores sub-second precision                       |
+| `boolean`          | SQLite `0`/`1` vs Postgres `boolean`                                 |
+| `textBoolean`      | SQLite `"true"`/`"false"` vs Postgres `boolean`                      |
+| `json`             | SQLite JSON text vs Postgres `jsonb`                                 |
+| `caseInsensitive`  | Case-insensitive string comparison                                   |
+| `nullish`          | Treats `null` and `undefined` as equivalent                          |
+| `round(dp)`        | Rounds both sides to `dp` decimal places                             |
 
 Convenience helpers are exported from `src/helpers.ts`:
 
