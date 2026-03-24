@@ -73,11 +73,12 @@ export async function compareTable(
 ): Promise<TableSummary> {
   const pkCols = getPkColumns(config)
   const mappings = config.columnMappings ?? {}
+  const pgTableName = config.pgName ?? config.name
 
   // Get columns from both sides
   const [sqliteCols, pgCols] = await Promise.all([
     sqlite.getTableColumns(config.name),
-    pg.getTableColumns(config.name),
+    pg.getTableColumns(pgTableName),
   ])
 
   // Auto-ignore the soft delete column from comparisons
@@ -117,7 +118,7 @@ export async function compareTable(
       : undefined
   const [sqliteRows, pgRows] = await Promise.all([
     sqlite.getRows(config.name, sqliteFetchCols, pkCols),
-    pg.getRows(config.name, pgFetchCols, pgPkCols, pgWhereNull),
+    pg.getRows(pgTableName, pgFetchCols, pgPkCols, pgWhereNull),
   ])
 
   const diffs: RowDiff[] = []

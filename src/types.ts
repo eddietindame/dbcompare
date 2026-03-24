@@ -12,6 +12,8 @@ export type ColumnMapping = {
 
 export type TableConfig = {
   name: string
+  /** If the table has a different name in Postgres */
+  pgName?: string
   /** Column name(s) that form the primary key */
   primaryKey: string | string[]
   /** Columns to skip when comparing (e.g. deleted_at, synced_at) */

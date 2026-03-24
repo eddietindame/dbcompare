@@ -360,6 +360,106 @@ describe('compareTable', () => {
     })
   })
 
+  describe('table renaming (pgName)', () => {
+    it('queries postgres with pgName when specified', async () => {
+      const { sqlite, pg } = makePair()
+
+      sqlite.addTable(
+        'bordereau_runs',
+        ['id', 'status'],
+        [{ id: '1', status: 'complete' }],
+      )
+      pg.addTable(
+        'bordereaux_runs',
+        ['id', 'status'],
+        [{ id: '1', status: 'complete' }],
+      )
+
+      const result = await compareTable(sqlite, pg, {
+        name: 'bordereau_runs',
+        pgName: 'bordereaux_runs',
+        primaryKey: 'id',
+      })
+
+      expect(result.diffs).toEqual([])
+    })
+
+    it('detects mismatches across renamed tables', async () => {
+      const { sqlite, pg } = makePair()
+
+      sqlite.addTable(
+        'bordereau_runs',
+        ['id', 'status'],
+        [{ id: '1', status: 'pending' }],
+      )
+      pg.addTable(
+        'bordereaux_runs',
+        ['id', 'status'],
+        [{ id: '1', status: 'complete' }],
+      )
+
+      const result = await compareTable(sqlite, pg, {
+        name: 'bordereau_runs',
+        pgName: 'bordereaux_runs',
+        primaryKey: 'id',
+      })
+
+      expect(result.valueMismatches).toBe(1)
+    })
+
+    it('detects missing rows across renamed tables', async () => {
+      const { sqlite, pg } = makePair()
+
+      sqlite.addTable(
+        'bordereau_runs',
+        ['id', 'status'],
+        [
+          { id: '1', status: 'complete' },
+          { id: '2', status: 'pending' },
+        ],
+      )
+      pg.addTable(
+        'bordereaux_runs',
+        ['id', 'status'],
+        [{ id: '1', status: 'complete' }],
+      )
+
+      const result = await compareTable(sqlite, pg, {
+        name: 'bordereau_runs',
+        pgName: 'bordereaux_runs',
+        primaryKey: 'id',
+      })
+
+      expect(result.missingInPostgres).toBe(1)
+    })
+
+    it('combines pgName with column mappings', async () => {
+      const { sqlite, pg } = makePair()
+
+      sqlite.addTable(
+        'bordereau_runs',
+        ['id', 'active'],
+        [{ id: '1', active: 1 }],
+      )
+      pg.addTable(
+        'bordereaux_runs',
+        ['id', 'is_active'],
+        [{ id: '1', is_active: 1 }],
+      )
+
+      const result = await compareTable(sqlite, pg, {
+        name: 'bordereau_runs',
+        pgName: 'bordereaux_runs',
+        primaryKey: 'id',
+        columnMappings: {
+          active: { pgName: 'is_active' },
+        },
+      })
+
+      expect(result.diffs).toEqual([])
+    })
+  })
+
   describe('normalizers', () => {
     it('applies numeric normalizer to make integer match decimal', async () => {
       const { sqlite, pg } = makePair()
