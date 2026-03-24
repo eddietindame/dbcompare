@@ -10,6 +10,16 @@ import type {
 import { SqliteAdapter } from './adapters/sqlite'
 import { PostgresAdapter } from './adapters/postgres'
 
+function rethrow(
+  source: 'sqlite' | 'postgres',
+  table: string,
+): (error: unknown) => never {
+  return (error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`[${source}] ${table}: ${message}`)
+  }
+}
+
 function getPkColumns(config: TableConfig): string[] {
   return Array.isArray(config.primaryKey)
     ? config.primaryKey
@@ -77,8 +87,8 @@ export async function compareTable(
 
   // Get columns from both sides
   const [sqliteCols, pgCols] = await Promise.all([
-    sqlite.getTableColumns(config.name),
-    pg.getTableColumns(pgTableName),
+    sqlite.getTableColumns(config.name).catch(rethrow('sqlite', config.name)),
+    pg.getTableColumns(pgTableName).catch(rethrow('postgres', pgTableName)),
   ])
 
   // Auto-ignore the soft delete column from comparisons
@@ -117,8 +127,12 @@ export async function compareTable(
       ? [config.softDeleteColumn]
       : undefined
   const [sqliteRows, pgRows] = await Promise.all([
-    sqlite.getRows(config.name, sqliteFetchCols, pkCols),
-    pg.getRows(pgTableName, pgFetchCols, pgPkCols, pgWhereNull),
+    sqlite
+      .getRows(config.name, sqliteFetchCols, pkCols)
+      .catch(rethrow('sqlite', config.name)),
+    pg
+      .getRows(pgTableName, pgFetchCols, pgPkCols, pgWhereNull)
+      .catch(rethrow('postgres', pgTableName)),
   ])
 
   const diffs: RowDiff[] = []
