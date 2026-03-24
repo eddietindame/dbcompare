@@ -45,6 +45,22 @@ export async function watch(
     process.stdout.write(header + '\n' + message + '\n' + footer + '\n')
   }
 
+  function showError(error: unknown) {
+    const timestamp = new Date().toLocaleTimeString()
+    const header = `\x1b[2m[${timestamp}]\x1b[0m\n`
+    const errorMessage = error instanceof Error ? error.message : String(error)
+    const message =
+      `\x1b[31m✖  Error during comparison\x1b[0m\n` +
+      `\x1b[2m   ${errorMessage}\x1b[0m\n`
+    const footer =
+      `\x1b[2mWatching for changes... (interval: ${interval}ms)\n` +
+      `\n` +
+      `q quit  r refresh  Ctrl+C exit\x1b[0m`
+
+    console.clear()
+    process.stdout.write(header + '\n' + message + '\n' + footer + '\n')
+  }
+
   async function run() {
     if (running) {
       pending = true
@@ -94,12 +110,16 @@ export async function watch(
         notify(result)
       }
       lastDiffCount = result.totalDiffs
-    } catch {
-      if (!sqliteDisconnected) {
-        sqliteDisconnected = true
-        lastDiffCount = -1
+    } catch (error) {
+      if (isSqliteUnavailable()) {
+        if (!sqliteDisconnected) {
+          sqliteDisconnected = true
+          lastDiffCount = -1
+        }
+        showDisconnected()
+      } else {
+        showError(error)
       }
-      showDisconnected()
     } finally {
       if (sqlite) await sqlite.close()
       running = false
