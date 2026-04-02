@@ -48,7 +48,7 @@ function renderDiffs(diffs: RowDiff[], c: ChalkInstance): string {
 
 export async function renderReport(
   result: CompareResult,
-  options: { verbose?: boolean; json?: boolean } = {},
+  options: { verbose?: boolean; json?: boolean; terse?: boolean } = {},
 ): Promise<string> {
   if (options.json) {
     return JSON.stringify(result, null, 2)
@@ -58,6 +58,8 @@ export async function renderReport(
   const lines: string[] = []
 
   for (const table of result.tables) {
+    if (options.terse && table.diffs.length === 0) continue
+
     lines.push('')
     lines.push(c.bold.underline(`Table: ${table.table}`))
     lines.push(
@@ -90,20 +92,22 @@ export async function renderReport(
     }
   }
 
-  lines.push('')
-  if (result.totalDiffs === 0) {
-    lines.push(c.green.bold('All tables match.'))
-  } else {
-    lines.push(c.red.bold(`Total diffs: ${result.totalDiffs}`))
+  if (!options.terse || result.totalDiffs > 0) {
+    lines.push('')
+    if (result.totalDiffs === 0) {
+      lines.push(c.green.bold('All tables match.'))
+    } else {
+      lines.push(c.red.bold(`Total diffs: ${result.totalDiffs}`))
+    }
+    lines.push('')
   }
-  lines.push('')
 
   return lines.join('\n')
 }
 
 export async function printReport(
   result: CompareResult,
-  options: { verbose?: boolean; json?: boolean } = {},
+  options: { verbose?: boolean; json?: boolean; terse?: boolean } = {},
 ): Promise<void> {
   console.log(await renderReport(result, options))
 }

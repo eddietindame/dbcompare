@@ -16,6 +16,7 @@ program
     'dbcompare.config.ts',
   )
   .option('-v, --verbose', 'Show all diffs (not just first 5 per table)')
+  .option('-t, --terse', 'Only show tables with errors')
   .option('--json', 'Output as JSON')
   .option('-w, --watch', 'Watch for changes and re-run comparison')
   .option('--interval <ms>', 'Polling interval for watch mode in ms', '3000')
@@ -40,6 +41,7 @@ program
     if (opts.watch) {
       await watch(config, {
         verbose: opts.verbose,
+        terse: opts.terse,
         interval: parseInt(opts.interval, 10),
       })
       return
@@ -50,6 +52,7 @@ program
       await printReport(result, {
         verbose: opts.verbose,
         json: opts.json,
+        terse: opts.terse,
       })
       process.exit(result.totalDiffs > 0 ? 1 : 0)
     } catch (err) {

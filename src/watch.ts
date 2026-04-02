@@ -11,6 +11,7 @@ export async function watch(
   config: CompareConfig,
   options: {
     verbose?: boolean
+    terse?: boolean
     interval?: number
   } = {},
 ): Promise<void> {
@@ -86,7 +87,10 @@ export async function watch(
     try {
       sqlite = new SqliteAdapter(sqlitePath)
       const result = await compareWithAdapters(sqlite, pg, tableConfigs)
-      const report = await renderReport(result, { verbose: options.verbose })
+      const report = await renderReport(result, {
+        verbose: options.verbose,
+        terse: options.terse,
+      })
 
       if (sqliteDisconnected) {
         sqliteDisconnected = false
